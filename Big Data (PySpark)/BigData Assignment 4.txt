@@ -1,0 +1,231 @@
+"""
+Created By Anderson Henrique Klein in Winter 2019 for MSIS 2627
+"""
+
+#Importing PySpark and sys
+from pyspark.sql import SparkSession
+import pyspark.sql.functions as sql
+from pyspark.sql.functions import desc
+from pyspark.sql.functions import lower, col
+import sys
+
+print()
+print("Creating a PySpark Session...")
+spark = SparkSession.builder\
+        .appName(sys.argv[0])\
+        .getOrCreate()
+print("Session created with name "+sys.argv[0])
+
+print()
+print("Running code on file from root\ "+sys.argv[1])
+input_path = sys.argv[1] #"whitehouse_waves-2016_12.csv"
+df = spark.read.format('com.databricks.spark.csv')\
+     .options(header='true', inferschema='true')\
+     .load(input_path)
+
+print("Dropping Collumns from DF and converting to lowercase...")
+df = df.select([lower(col('namelast')).alias('namelast'),\
+                lower(col('namefirst')).alias('namefirst'),\
+                lower(col('namemid')).alias('namemid'),\
+                lower(col('visitee_namelast')).alias('visitee_namelast'),\
+                lower(col('visitee_namefirst')).alias('visitee_namefirst')])
+
+print()
+print("Removing invalid rows and filling N/A namemid with blanks...")
+valid_records = df.filter((df.visitee_namelast.isNotNull()) & (df.namelast.isNotNull())).fillna("")
+valid_records.registerTempTable("valid_records")
+
+print()
+print("Here are the top 10 rows from the filtered dataframe:")
+valid_records.show(10)
+
+print()
+print("The number of dropped rows is: "+str(df.count()-valid_records.count()))
+
+
+
+
+
+
+
+
+print()
+print("The 10 most frequent visitors are: ")
+print("<lastName,firstName,middleName><frequency>")
+spark.sql("SELECT CONCAT(namelast, ' ',  namefirst, ' ',  namemid) FROM valid_records")\
+                  .groupBy("concat(namelast,  , namefirst,  , namemid)")\
+                  .count().sort(desc("count")).show(10)
+
+print("The 10 most visited people are: ")
+print("<lastName,firstName><frequency>")
+spark.sql("SELECT CONCAT(visitee_namelast, ' ',  visitee_namefirst) FROM valid_records")\
+                  .groupBy("concat(visitee_namelast,  , visitee_namefirst)")\
+                  .count().sort(desc("count")).show(10)
+
+print()
+print("The 10 most frequent combinations are: ")
+print("<visitor-visitee><frequency>")
+spark.sql("SELECT CONCAT(namelast, ' ',  namefirst, ' ',  namemid, '-', visitee_namelast, ' ',  visitee_namefirst) FROM valid_records")\
+                  .groupBy("concat(namelast,  , namefirst,  , namemid, -, visitee_namelast,  , visitee_namefirst)")\
+                  .count().sort(desc("count")).show(10,False)
+
+print()
+print("The program has completed successfully")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################################
+########## OUTPUT SAMPLE ##########
+###################################
+
+C:\...>python "BigData Assignment 4.py" "whitehouse_waves-2016_12.csv"
+
+Creating a PySpark Session...
+20/03/02 09:21:48 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Session created with name BigData Assignment 4.py
+
+Running code on file from root\ whitehouse_waves-2016_12.csv
+Dropping Collumns from DF and converting to lowercase...
+
+Removing invalid rows and filling N/A namemid with blanks...
+20/03/02 09:21:54 WARN Utils: Truncated the string representation of a plan since it was too large. This behavior can be adjusted by setting 'spark.debug.maxToStringFields' in SparkEnv.conf.
+
+Here are the top 10 rows from the filtered dataframe:
++---------------+---------+-------+----------------+-----------------+
+|       namelast|namefirst|namemid|visitee_namelast|visitee_namefirst|
++---------------+---------+-------+----------------+-----------------+
+|tajouribessassi|   hanene|       |        pelofsky|             eric|
+|        bageant|    laura|      j|     baskerville|           steven|
+|       broemson|     earl|      h|     baskerville|           steven|
+|    jackling jr|  william|      c|     baskerville|           steven|
+|        mccrary|  richard|      l|     baskerville|           steven|
+|        mulcahy|   joshua|      e|     baskerville|           steven|
+|           ryan|   oliver|      j|     baskerville|           steven|
+|       smith jr|  william|      t|     baskerville|           steven|
+|         keeler|  douglas|      e|       goldstein|             jeff|
+|          davis|   justin|      a|            drew|              maj|
++---------------+---------+-------+----------------+-----------------+
+only showing top 10 rows
+
+
+The number of dropped rows is: 59255
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The 10 most frequent visitors are:
+<lastName,firstName,middleName><frequency>
++------------------------------------------+-----+
+|concat(namelast,  , namefirst,  , namemid)|count|
++------------------------------------------+-----+
+|                         thomas benjamin l|  185|
+|                        berner katherine k|  176|
+|                             haas jordan m|  152|
+|                           grant patrick c|  151|
+|                          kidwell lauren k|  145|
+|                             haro steven m|  140|
+|                            garza steven a|  127|
+|                              strait elan |  107|
+|                            lew shoshana m|  102|
+|                          zeitlin daniel l|   98|
++------------------------------------------+-----+
+only showing top 10 rows
+
+The 10 most visited people are:
+<lastName,firstName><frequency>
++----------------------------------------------+------+
+|concat(visitee_namelast,  , visitee_namefirst)| count|
++----------------------------------------------+------+
+|                               office visitors|430881|
+|                          waves visitorsoffice| 44129|
+|                                   bryant ruth| 13970|
+|                                  oneil olivia| 13155|
+|                                thompson jared| 11618|
+|                                       / potus| 10900|
+|                                 burton collin|  9672|
+|                                 megan matthew|  7944|
+|                                mayerson asher|  6886|
+|                            dessources kalisha|  5289|
++----------------------------------------------+------+
+only showing top 10 rows
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+The 10 most frequent combinations are:
+<visitor-visitee><frequency>
++--------------------------------------------------------------+-----+
+|concat(namelast,  namefirst ... _namelast,  visitee_namefirst)|count|
++--------------------------------------------------------------+-----+
+|haas jordan m-yudelson alex                                   |90   |
+|thomas benjamin l-yudelson alex                               |89   |
+|grant patrick c-yudelson alex                                 |88   |
+|berner katherine k-yudelson alex                              |82   |
+|roche shannon e-yudelson alex                                 |70   |
+|urizar jennifer a-johnson katie                               |68   |
+|martin kathryn -lambrew jeanne                                |56   |
+|kidwell lauren k-abraham yohannes                             |55   |
+|berner katherine k-abraham yohannes                           |54   |
+|grant patrick c-abraham yohannes                              |54   |
++--------------------------------------------------------------+-----+
+only showing top 10 rows
+
+
+The program has completed successfully
+
+C:\...>SUCCESS: The process with PID 7716 (child process of PID 13948) has been terminated.
+SUCCESS: The process with PID 13948 (child process of PID 24264) has been terminated.
+SUCCESS: The process with PID 24264 (child process of PID 25540) has been terminated.
+
+NOTE: edited sample output top 10 most frequent combinations table header in order to fit in one page.
