@@ -1,0 +1,139 @@
+"""
+Created By Anderson Henrique Klein in Winter 2019 for MSIS 2627
+"""
+
+#Importing PySpark and sys
+from pyspark.sql import SparkSession
+import sys
+
+print()
+print("Creating a PySpark Session...")
+spark = SparkSession.builder\
+        .appName(sys.argv[0])\
+        .getOrCreate()
+print("Session created with name "+sys.argv[0])
+
+print()
+print("Running code on file from root\ "+sys.argv[1])
+input_path = sys.argv[1] #"whitehouse_waves-2016_12.csv"
+records = spark.sparkContext.textFile(input_path)
+
+print("Here are the top 10 rows from the file:")
+records_10 = records.take(10)
+print(records_10)
+
+#spliting rows and then filtering into valid and invalid
+split_records = records.map(lambda x: x.lower().split(','))
+invalid_records = split_records.filter(lambda x: x[0]=="" or x[19]=="")
+valid_records = split_records.filter(lambda x: x[0]!="" and x[19]!="" and x[0]!='NAMELAST')
+
+#creating visitor count rdd <lastName,firstName,middleName><frequency>
+visitors = valid_records.map(lambda x: (x[0]+','+x[1]+','+x[2],1))
+visitors_count = visitors.reduceByKey(lambda x,y: x+y)
+
+#creating visitee count rdd <lastName,firstName><frequency>
+visitee = valid_records.map(lambda x: (x[19]+','+x[20],1))
+visitee_count = visitee.reduceByKey(lambda x,y: x+y)
+
+#creating visitor-visitee count rdd <visitor-visitee><frequency>
+combinations = valid_records.map(lambda x: (x[0]+','+x[1]+','+x[2]+'-'+x[19]+','+x[20],1))
+combinations_count = combinations.reduceByKey(lambda x,y: x+y)
+
+
+
+
+
+
+
+
+
+
+
+
+#printing ouput
+print()
+print("The number of dropped rows is: "+str( invalid_records.count() ))
+
+print()
+print("The 10 most frequent visitors are: ")
+print("<lastName,firstName,middleName><frequency>")
+print(visitors_count.takeOrdered(10, key=lambda x: -x[1]))
+
+print()
+print("The 10 most visited people are: ")
+print("<lastName,firstName><frequency>")
+print(visitee_count.takeOrdered(10, key=lambda x: -x[1]))
+
+print()
+print("The 10 most frequent combinations are: ")
+print("<visitor-visitee><frequency>")
+print(combinations_count.takeOrdered(10, key=lambda x: -x[1]))
+
+print()
+print("The program has completed successfully")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+###################################
+########## OUTPUT SAMPLE ##########
+###################################
+
+C:\...\Python Code>python "BigData Assignment 3 V2.py" "whitehouse_waves-2016_12.csv"
+
+Creating a PySpark Session...
+20/02/19 07:42:31 WARN NativeCodeLoader: Unable to load native-hadoop library for your platform... using builtin-java classes where applicable
+Session created with name BigData Assignment 3 V2.py
+
+Running code on file from root\ whitehouse_waves-2016_12.csv
+Here are the top 10 rows from the file:
+['NAMELAST,NAMEFIRST,NAMEMID,UIN,BDGNBR,ACCESS_TYPE,TOA,POA,TOD,POD,APPT_MADE_DATE,APPT_START_DATE,APPT_END_DATE,APPT_CANCEL_DATE,Total_People,LAST_UPDATEDBY,POST,LASTENTRYDATE,TERMINAL_SUFFIX,visitee_namelast,visitee_namefirst,MEETING_LOC,MEETING_ROOM,CALLER_NAME_LAST,CALLER_NAME_FIRST,CALLER_ROOM,DESCRIPTION,Release_Date', 'TAJOURIBESSASSI,HANENE,,U22101,,VA,,,,,9/2/2015 0:00,10/1/2015 3:00,10/1/2015 23:59,,1,AR,WIN,9/2/2015 11:38,AR,Pelofsky,Eric,OEOB,226,ROWBERRY,ARIANA,,,1/29/2016', 'bageant,laura,j,U30528,,VA,,,,,9/29/2015 0:00,10/1/2015 5:00,9/30/2016 23:59,,7,WW,WIN,9/29/2015 13:42,WW,Baskerville,Steven,WH,WH Grounds,WARDEN,WILLIAM,,,1/29/2016', 'Broemson,Earl,H,U30528,,VA,,,,,9/29/2015 0:00,10/1/2015 5:00,9/30/2016 23:59,,7,WW,WIN,9/29/2015 14:41,WW,Baskerville,Steven,WH,WH Grounds,WARDEN,WILLIAM,,,1/29/2016', 'Jackling Jr,William,C,U30528,,VA,,,,,9/29/2015 0:00,10/1/2015 5:00,9/30/2016 23:59,,7,WW,WIN,9/29/2015 13:42,WW,Baskerville,Steven,WH,WH Grounds,WARDEN,WILLIAM,,,1/29/2016', 'McCrary,Richard,L,U30528,,VA,,,,,9/29/2015 0:00,10/1/2015 5:00,9/30/2016 23:59,,7,WW,WIN,9/29/2015 13:42,WW,Baskerville,Steven,WH,WH Grounds,WARDEN,WILLIAM,,,1/29/2016', 'Mulcahy,Joshua,E,U30528,,VA,,,,,9/29/2015 0:00,10/1/2015 5:00,9/30/2016 23:59,,7,WW,WIN,9/29/2015 13:42,WW,Baskerville,Steven,WH,WH Grounds,WARDEN,WILLIAM,,,1/29/2016', 'Ryan,Oliver,J,U30528,,VA,,,,,9/29/2015 0:00,10/1/2015 5:00,9/30/2016 23:59,,7,WW,WIN,9/29/2015 14:41,WW,Baskerville,Steven,WH,WH Grounds,WARDEN,WILLIAM,,,1/29/2016', 'Smith Jr,William,T,U30528,,VA,,,,,9/29/2015 0:00,10/1/2015 5:00,9/30/2016 23:59,,7,WW,WIN,9/29/2015 13:42,WW,Baskerville,Steven,WH,WH Grounds,WARDEN,WILLIAM,,,1/29/2016', 'Keeler,Douglas,E,U21657,,VA,,,,,9/1/2015 0:00,10/1/2015 6:30,10/1/2015 23:59,,1,LD,WIN,9/1/2015 11:04,LD,Goldstein,Jeff,NEOB,7013,DUKE,LAURA,,,1/29/2016']
+
+The number of dropped rows is: 59255
+
+The 10 most frequent visitors are:
+<lastName,firstName,middleName><frequency>
+[('thomas,benjamin,l', 185), ('berner,katherine,k', 176), ('haas,jordan,m', 152), ('grant,patrick,c', 151), ('kidwell,lauren,k', 145), ('haro,steven,m', 140), ('garza,steven,a', 127), ('strait,elan,', 107), ('lew,shoshana,m', 102), ('zeitlin,daniel,l', 98)]
+
+The 10 most visited people are:
+<lastName,firstName><frequency>
+[('office,visitors', 430881), ('waves,visitorsoffice', 44129), ('bryant,ruth', 13970), ('oneil,olivia', 13155), ('thompson,jared', 11618), ('/,potus', 10900), ('burton,collin', 9672), ('megan,matthew', 7944), ('mayerson,asher', 6886), ('dessources,kalisha', 5289)]
+
+The 10 most frequent combinations are:
+<visitor-visitee><frequency>
+[('haas,jordan,m-yudelson,alex', 90), ('thomas,benjamin,l-yudelson,alex', 89), ('grant,patrick,c-yudelson,alex', 88), ('berner,katherine,k-yudelson,alex', 82), ('roche,shannon,e-yudelson,alex', 70), ('urizar,jennifer,a-johnson,katie', 68), ('martin,kathryn,-lambrew,jeanne', 56), ('kidwell,lauren,k-abraham,yohannes', 55), ('grant,patrick,c-abraham,yohannes', 54), ('berner,katherine,k-abraham,yohannes', 54)]
+
+The program has completed successfully
+
+C:\...\Python Code>SUCCESS: The process with PID 6376 (child process of PID 14428) has been terminated.
+SUCCESS: The process with PID 14428 (child process of PID 9108) has been terminated.
+SUCCESS: The process with PID 9108 (child process of PID 18784) has been terminated.
